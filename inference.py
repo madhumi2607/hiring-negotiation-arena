@@ -181,7 +181,7 @@ def force_action(obs: dict, step: int) -> dict:
 
 def get_agent_action(client: OpenAI, obs: dict, step: int, history: List[str]) -> dict:
     # Force deterministic offer by step 4
-    if step >= 4:
+    if step > 6:
         return force_action(obs, step)
 
     user_prompt = build_user_prompt(obs, step, history)
@@ -285,4 +285,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
