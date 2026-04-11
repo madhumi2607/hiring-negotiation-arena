@@ -1,12 +1,11 @@
-
-"""
+﻿"""
 inference.py — HiringNegotiationArena
 ======================================
 Mandatory stdout format:
     [START] task=<task_name> env=hiring-negotiation-arena model=<model_name>
     [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
     [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
-"""
+
 Environment variables:
     API_BASE_URL   LLM endpoint
     MODEL_NAME     Model identifier
