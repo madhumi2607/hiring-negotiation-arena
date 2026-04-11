@@ -255,7 +255,7 @@ def run_task(client: OpenAI, task_name: str) -> float:
                 break
 
         # Score = cumulative reward clamped to [0, 1]
-        score = min(1.0, max(0.0, sum(rewards)))
+        score = min(0.999, max(0.001, sum(rewards)))
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     except Exception as exc:
@@ -285,3 +285,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

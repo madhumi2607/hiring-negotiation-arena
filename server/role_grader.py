@@ -1,5 +1,5 @@
-"""
-Role-fit correctness grader — 100% deterministic.
+﻿"""
+Role-fit correctness grader â€” 100% deterministic.
 Scores how well the final offer matches the job requirements.
 """
 from __future__ import annotations
@@ -28,20 +28,20 @@ def score_role_fit(
     Returns role_fit_score in [0.0, 0.4] broken into components.
 
     Components:
-        required_skills_score  (0.0 – 0.20)
-        experience_score       (0.0 – 0.10)
-        salary_range_score     (0.0 – 0.10)
+        required_skills_score  (0.0 â€“ 0.20)
+        experience_score       (0.0 â€“ 0.10)
+        salary_range_score     (0.0 â€“ 0.10)
     """
     candidate_set = set(s.lower() for s in candidate_skills)
     required_set = set(s.lower() for s in required_skills)
     preferred_set = set(s.lower() for s in preferred_skills)
 
-    # Required skills (0–0.20)
+    # Required skills (0â€“0.20)
     matched_required = required_set & candidate_set
     required_ratio = len(matched_required) / max(len(required_set), 1)
     required_skills_score = required_ratio * 0.20
 
-    # Experience level (0–0.10)
+    # Experience level (0â€“0.10)
     level_years = {
         "junior": (0, 2),
         "mid":    (2, 6),
@@ -56,7 +56,7 @@ def score_role_fit(
     else:
         experience_score = 0.0
 
-    # Salary range (0–0.10)
+    # Salary range (0â€“0.10)
     salary_range_score = 0.0
     if offered_salary is not None:
         sal_min, sal_max = MARKET_SALARY_RANGES.get(experience_level.lower(), (50000, 250000))
@@ -67,10 +67,10 @@ def score_role_fit(
             ratio = offered_salary / sal_min
             salary_range_score = max(0.0, (ratio - 0.9) * 1.0) * 0.10
         else:
-            # Above market — still acceptable but less points
+            # Above market â€” still acceptable but less points
             salary_range_score = 0.05
 
-    total = required_skills_score + experience_score + salary_range_score
+    total = min(0.399, required_skills_score + experience_score + salary_range_score)
 
     return {
         "role_fit_score": round(total, 4),
@@ -96,9 +96,9 @@ def score_negotiation(
     Returns negotiation_score in [0.0, 0.6].
 
     Components:
-        offer_accepted        (0.0 – 0.40)
-        team_lead_approved    (0.0 – 0.10)
-        budget_approved       (0.0 – 0.10)
+        offer_accepted        (0.0 â€“ 0.40)
+        team_lead_approved    (0.0 â€“ 0.10)
+        budget_approved       (0.0 â€“ 0.10)
     """
     offer_accepted_score = 0.0
     if candidate_accepted:
@@ -106,7 +106,7 @@ def score_negotiation(
         efficiency = 1.0 - (steps_used / max_steps) * 0.1
         offer_accepted_score = 0.40 * efficiency
     elif candidate_interest_at_close > 0.5:
-        # Partial credit — almost there
+        # Partial credit â€” almost there
         offer_accepted_score = 0.15
 
     team_lead_score = 0.0
@@ -121,7 +121,7 @@ def score_negotiation(
     elif budget_approved is None and budget_checked:
         budget_score = 0.04
 
-    total = offer_accepted_score + team_lead_score + budget_score
+    total = min(0.599, offer_accepted_score + team_lead_score + budget_score)
 
     return {
         "negotiation_score": round(total, 4),
@@ -129,3 +129,5 @@ def score_negotiation(
         "team_lead_score": round(team_lead_score, 4),
         "budget_score": round(budget_score, 4),
     }
+
+
