@@ -302,7 +302,7 @@ def train(config: GRPOConfig):
         advantages = compute_grpo_advantages(group_total_rewards)
 
         # ── Policy gradient update ──
-        total_loss = torch.tensor(0.0, requires_grad=True)
+        losses = []
         for traj, advantage in zip(group, advantages):
             if advantage <= 0:
                 continue   # only learn from above-average trajectories
@@ -316,8 +316,11 @@ def train(config: GRPOConfig):
 
                 outputs = model(**inputs, labels=labels)
                 loss = outputs.loss * advantage
-                total_loss = total_loss + loss
+                losses.append(outputs.loss * advantage)
 
+        if not losses:
+            continue
+        total_loss = torch.stack(losses).mean()
         optimizer.zero_grad()
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
