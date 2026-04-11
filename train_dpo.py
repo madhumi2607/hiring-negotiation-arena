@@ -1,5 +1,5 @@
-"""
-train_dpo.py — DPO Training Pipeline for HiringNegotiationArena
+﻿"""
+train_dpo.py â€” DPO Training Pipeline for HiringNegotiationArena
 ===============================================================
 
 Direct Preference Optimization (DPO) fine-tunes an LLM using preference pairs
@@ -11,13 +11,13 @@ generated AUTOMATICALLY from the bias detection layer:
 
 WHY DPO FOR THIS ENVIRONMENT:
     Standard RL optimizes for task reward (did the candidate accept?).
-    DPO here optimizes for FAIRNESS — the model learns to prefer trajectories
+    DPO here optimizes for FAIRNESS â€” the model learns to prefer trajectories
     that reach good outcomes WITHOUT discriminatory decisions.
 
     This is a genuine AI alignment contribution:
-    → The bias detection layer becomes a preference signal generator
-    → No human labeling needed — the environment labels itself
-    → The trained model internalizes fair hiring behavior, not just rule-following
+    â†’ The bias detection layer becomes a preference signal generator
+    â†’ No human labeling needed â€” the environment labels itself
+    â†’ The trained model internalizes fair hiring behavior, not just rule-following
 
 PREFERENCE PAIR EXAMPLE:
 
@@ -25,12 +25,12 @@ PREFERENCE PAIR EXAMPLE:
         Step 1: probe_team_lead("required skills")
         Step 2: probe_candidate("salary expectations?")
         Step 3: check_budget(110000)
-        Step 4: make_offer(110000) → ACCEPTED, bias_score=1.0
+        Step 4: make_offer(110000) â†’ ACCEPTED, bias_score=1.0
 
     REJECTED trajectory (bias flagged, offer rejected):
-        Step 1: probe_team_lead("college background?")  ← triggers bias signal
-        Step 2: make_offer(85000)  ← below market for this background
-        → REJECTED, bias_score=0.50, flags=["below_market_offer"]
+        Step 1: probe_team_lead("college background?")  â† triggers bias signal
+        Step 2: make_offer(85000)  â† below market for this background
+        â†’ REJECTED, bias_score=0.50, flags=["below_market_offer"]
 
 SETUP:
     pip install trl transformers torch peft accelerate datasets
@@ -78,7 +78,7 @@ class DPOConfig:
     pairs_file: str = "preference_pairs.jsonl"
     output_dir: str = "./dpo_checkpoints"
     learning_rate: float = 5e-7
-    beta: float = 0.1                        # DPO temperature — controls KL penalty
+    beta: float = 0.1                        # DPO temperature â€” controls KL penalty
     batch_size: int = 2
     gradient_accumulation: int = 8
     max_length: int = 512
@@ -183,6 +183,7 @@ def run_policy(
     Run one episode with a specified policy type.
     Returns trajectory info including steps, final reward, bias score.
     """
+    # Always reset before each policy run -- server is stateful
     obs = env.reset(task_name)
     steps = []
     history = []
@@ -225,7 +226,11 @@ def run_policy(
         prompt = obs_to_prompt(obs, history)
         action_text = action_to_text(action_type, action_data)
 
-        result = env.step(action_type, action_data)
+        try:
+            result = env.step(action_type, action_data)
+        except Exception as e:
+            print(f"    [WARN] step failed: {e}")
+            break
         reward = result.get("reward", 0.0)
         obs = result["observation"]
         total_reward += reward
@@ -278,8 +283,8 @@ def collect_preference_pairs(
     Collect preference pairs by running fair vs biased policies.
 
     For each task:
-        - Run fair policy → candidate for CHOSEN
-        - Run biased policy → candidate for REJECTED
+        - Run fair policy â†’ candidate for CHOSEN
+        - Run biased policy â†’ candidate for REJECTED
         - Pair them if both qualify
     """
     pairs = []
@@ -292,17 +297,17 @@ def collect_preference_pairs(
         print(f"\nCollecting pairs for {task_name}...")
 
         for ep in range(episodes_per_task):
-            # Fair policy → potential chosen
+            # Fair policy â†’ potential chosen
             fair_traj = run_policy(env, task_name, policy="fair")
             if is_chosen(fair_traj, config):
                 chosen_pool.append(fair_traj)
 
-            # Biased policy → potential rejected
+            # Biased policy â†’ potential rejected
             biased_traj = run_policy(env, task_name, policy="biased")
             if is_rejected(biased_traj, config):
                 rejected_pool.append(biased_traj)
 
-            # Random policy → more rejected candidates
+            # Random policy â†’ more rejected candidates
             if ep % 3 == 0:
                 random_traj = run_policy(env, task_name, policy="random")
                 if is_rejected(random_traj, config):
@@ -331,7 +336,7 @@ def collect_preference_pairs(
             }
             pairs.append(pair)
 
-        print(f"  → {n_pairs} pairs collected for {task_name}")
+        print(f"  â†’ {n_pairs} pairs collected for {task_name}")
 
     return pairs
 
@@ -543,3 +548,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
