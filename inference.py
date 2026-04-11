@@ -1,38 +1,34 @@
-﻿"""
-inference.py — HiringNegotiationArena baseline inference script.
-
+"""
+inference.py — HiringNegotiationArena
+======================================
 Mandatory stdout format:
     [START] task=<task_name> env=hiring-negotiation-arena model=<model_name>
     [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
     [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
 
 Environment variables:
-    API_BASE_URL   LLM endpoint (default: HF router)
+    API_BASE_URL   LLM endpoint
     MODEL_NAME     Model identifier
     HF_TOKEN       API key
-    HIRING_TASK    Task name (default: task1_easy)
-    ENV_BASE_URL   HiringNegotiationArena server URL (default: http://localhost:7860)
+    ENV_BASE_URL   Server URL (default: http://localhost:7860)
 """
 from __future__ import annotations
-import json
-import os
-import textwrap
+import json, os, textwrap
 from typing import List, Optional
-
 import requests
 from openai import OpenAI
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "hf_placeholder")
+API_KEY      = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "hf_placeholder")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+MODEL_NAME   = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
-BENCHMARK = "hiring-negotiation-arena"
-MAX_STEPS = 15
-TEMPERATURE = 0.3
-MAX_TOKENS = 300
+BENCHMARK    = "hiring-negotiation-arena"
+MAX_STEPS    = 15
+TEMPERATURE  = 0.3
+MAX_TOKENS   = 300
 SUCCESS_SCORE_THRESHOLD = 0.4
 
 TASKS_TO_RUN = [
@@ -44,179 +40,164 @@ TASKS_TO_RUN = [
 ]
 
 # ---------------------------------------------------------------------------
-# Logging helpers
+# Logging
 # ---------------------------------------------------------------------------
-
-def log_start(task: str, env: str, model: str) -> None:
+def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
+def log_step(step, action, reward, done, error):
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} "
+          f"done={str(done).lower()} error={error if error else 'null'}", flush=True)
 
-def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
-    error_val = error if error else "null"
-    done_val = str(done).lower()
-    action_safe = action.replace("\n", " ")[:120]
-    print(
-        f"[STEP] step={step} action={action_safe} reward={reward:.2f} done={done_val} error={error_val}",
-        flush=True,
-    )
-
-
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
-        flush=True,
-    )
-
+def log_end(success, steps, score, rewards):
+    print(f"[END] success={str(success).lower()} steps={steps} "
+          f"score={score:.3f} rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
 
 # ---------------------------------------------------------------------------
-# Environment client helpers
+# Environment client — correct API schema
 # ---------------------------------------------------------------------------
-
-def env_reset(task_name: str) -> dict:
-    resp = requests.post(f"{ENV_BASE_URL}/reset", params={"task_name": task_name}, timeout=30)
+def env_reset(task_id: str) -> dict:
+    resp = requests.post(f"{ENV_BASE_URL}/reset", json={"task_id": task_id}, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
-
-def env_step(action_type: str, action_data: dict) -> dict:
-    payload = {"action_type": action_type, "action_data": action_data}
-    resp = requests.post(f"{ENV_BASE_URL}/step", json=payload, timeout=30)
+def env_step(action: dict) -> dict:
+    resp = requests.post(f"{ENV_BASE_URL}/step", json={"action": action}, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
+def env_score() -> float:
+    try:
+        return float(requests.get(f"{ENV_BASE_URL}/score", timeout=10).json().get("score", 0.0))
+    except Exception:
+        return 0.0
 
 # ---------------------------------------------------------------------------
-# LLM agent
+# Agent
 # ---------------------------------------------------------------------------
-
 SYSTEM_PROMPT = textwrap.dedent("""
-You are an expert hiring manager AI. Hire the best candidate by negotiating a job offer.
+You are an expert hiring manager AI negotiating a job offer.
+Goal: hire the best candidate — get them to accept, get team lead approval, stay in budget, avoid bias.
 
-STRICT STEP STRATEGY — FOLLOW EXACTLY:
-- Step 1: probe_team_lead with topic "required skills"
-- Step 2: probe_candidate with question about competing offers and salary expectations
-- Step 3: check_budget with proposed_salary = candidate_current_salary * 1.20
-- Step 4+: make_offer with salary = max(candidate_current_salary * 1.20, budget_visible * 0.90)
-
-DO NOT probe more than twice. After step 3, ALWAYS make_offer. Never probe again after step 2.
-
-OFFER FORMULA:
-  salary = candidate_current_salary * 1.20
-  If salary > salary_budget_visible: salary = salary_budget_visible * 0.92
-  Round to nearest 1000.
+STRATEGY:
+- Step 1: consult_team_lead to discover required skills
+- Step 2: probe_candidate to discover competing offers and salary expectations
+- Step 3: check_budget with a business case (unlocks flexible budgets)
+- Step 4+: make_offer at market rate — DO NOT keep probing
 
 RULES:
-- NEVER reject based on college tier
-- NEVER probe more than 2 times total
-- ALWAYS make_offer by step 4 at the latest
+- NEVER reject based on college, school, or university
+- NEVER anchor salary to current salary — use market range
+- Make offer by step 4 at the latest unless you learn something critical
 
-Respond with ONLY a JSON object:
+Respond ONLY with valid JSON:
 {
-  "action_type": "<probe_candidate|probe_team_lead|check_budget|make_offer>",
-  "action_data": {<fields>},
-  "reasoning": "<one line>"
+  "action_type": "<probe_candidate|consult_team_lead|check_budget|request_skills_test|make_offer|accept_counteroffer|extend_deadline>",
+  "salary_offer": <number or null>,
+  "message": "<string>",
+  "benefits": {"remote_days": 3, "signing_bonus": 10000, "equity_percent": 0.05, "pto_days": 25} or null,
+  "skill_to_verify": "<string or null>"
 }
-
-make_offer fields: {"salary": <number>, "title": "<role_title>", "start_date": "2025-07-01"}
-check_budget fields: {"proposed_salary": <number>, "justification": "market rate"}
-probe_candidate fields: {"question": "<string>"}
-probe_team_lead fields: {"topic": "<string>"}
 """).strip()
 
 
-def build_user_prompt(obs: dict, step: int, history: List[str]) -> str:
-    last_responses = obs.get("last_responses", [])
-    responses_text = "\n".join(
-        f"  [{r['party'].upper()}]: {r['message']}" for r in last_responses
-    ) or "  (none yet)"
-
-    history_text = "\n".join(history[-6:]) or "  (none)"
-
-    return textwrap.dedent(f"""
-    === CURRENT STATE (Step {step}/{obs['max_steps']}) ===
-    Role: {obs['role_title']} ({obs['experience_level']})
-    Required Skills: {', '.join(obs['required_skills'])}
-    Budget (visible): ${obs['salary_budget_visible']:,.0f}
-
-    Candidate: {obs['candidate_name']}
-    Skills: {', '.join(obs['candidate_skills'])}
-    Experience: {obs['candidate_experience_years']} years | College Tier: {obs['candidate_college_tier']}
-    Current Salary: ${obs['candidate_current_salary']:,.0f}
-    Interest Level: {obs['candidate_interest']:.0%}
-
-    Offers Made: {len(obs.get('offers_made', []))}
-    Team Lead Approved: {obs.get('team_lead_approval')}
-    Budget Approved: {obs.get('budget_approved')}
-
-    Last Responses:
-    {responses_text}
-
-    Bias Score: {obs.get('bias_score', 1.0):.2f} (1.0 = no bias, lower = penalized)
-    Bias Flags: {obs.get('bias_flags', [])}
-
-    === ACTION HISTORY ===
-    {history_text}
-
-    Choose your next action:
-    """).strip()
+def build_prompt(obs: dict, step: int, history: List[str]) -> str:
+    return (
+        f"Step {step}/{obs.get('steps_remaining', 0) + step} | "
+        f"Role: {obs.get('role_title','?')} | "
+        f"Market: ${obs.get('market_salary_min',0):,.0f}-${obs.get('market_salary_max',0):,.0f}\n"
+        f"Required skills: {', '.join(obs.get('required_skills', []))}\n"
+        f"Candidate: {obs.get('candidate_name','?')} | "
+        f"Status: {obs.get('candidate_status','?')} | "
+        f"Sentiment: {obs.get('candidate_sentiment',0):.2f}\n"
+        f"Skills: {', '.join(obs.get('candidate_skills', []))}\n"
+        f"Current salary: ${obs.get('candidate_current_salary') or 0:,.0f}\n"
+        f"Candidate says: \"{obs.get('candidate_message','')[:150]}\"\n"
+        f"Team lead [{obs.get('team_lead_status','?')}]: \"{obs.get('team_lead_message','')[:100]}\"\n"
+        f"Budget: {'APPROVED' if obs.get('budget_approved') else 'not checked'} | "
+        f"{obs.get('budget_message','')[:80]}\n"
+        f"Bias score: {obs.get('bias_score',0):.2f} | "
+        f"Offers made: {len(obs.get('offers_made',[]))}\n"
+        f"History: {' | '.join(history[-4:]) or 'none'}\n\nChoose action:"
+    )
 
 
 def force_action(obs: dict, step: int) -> dict:
-    """Deterministic fallback strategy — guarantees an offer is made."""
-    current_salary = obs.get("candidate_current_salary", 90000)
-    budget = obs.get("salary_budget_visible", 120000)
-    title = obs.get("role_title", "Software Engineer")
-    salary = round(min(current_salary * 1.20, budget * 0.92) / 1000) * 1000
+    """Deterministic fallback — guarantees offer by step 4."""
+    mid = (obs.get("market_salary_min", 100000) + obs.get("market_salary_max", 150000)) / 2
+    salary = round(mid / 1000) * 1000
 
     if step == 1:
-        return {"action_type": "probe_team_lead", "action_data": {"topic": "required skills"}, "reasoning": "gather requirements"}
+        return {"action_type": "consult_team_lead",
+                "message": "What skills are essential for this role?",
+                "salary_offer": None, "benefits": None, "skill_to_verify": None}
     elif step == 2:
-        return {"action_type": "probe_candidate", "action_data": {"question": "Do you have other offers? What salary are you expecting?"}, "reasoning": "gauge interest"}
+        return {"action_type": "probe_candidate",
+                "message": "Do you have other offers? What salary are you expecting?",
+                "salary_offer": None, "benefits": None, "skill_to_verify": None}
     elif step == 3:
-        return {"action_type": "check_budget", "action_data": {"proposed_salary": salary, "justification": "market rate"}, "reasoning": "verify budget"}
+        return {"action_type": "check_budget",
+                "salary_offer": salary,
+                "message": "This hire will improve team velocity and ROI.",
+                "benefits": None, "skill_to_verify": None}
     else:
-        return {"action_type": "make_offer", "action_data": {"salary": salary, "title": title, "start_date": "2025-07-01"}, "reasoning": "make offer"}
+        return {"action_type": "make_offer",
+                "salary_offer": salary,
+                "message": "We'd love to have you join the team.",
+                "benefits": {"remote_days": 3, "signing_bonus": 10000,
+                             "equity_percent": 0.05, "pto_days": 25},
+                "skill_to_verify": None}
 
 
-def get_agent_action(client: OpenAI, obs: dict, step: int, history: List[str]) -> dict:
-    # Force deterministic offer by step 4
+def get_action(client: OpenAI, obs: dict, step: int, history: List[str]) -> dict:
+    # Force offer after step 6 no matter what
     if step > 6:
-        return force_action(obs, step)
+        return force_action(obs, 4)
 
-    user_prompt = build_user_prompt(obs, step, history)
+    # If we have all info and LLM keeps stalling, force offer
+    has_probed   = any("probe_candidate" in h or "consult_team_lead" in h for h in history)
+    has_budget   = any("check_budget" in h for h in history)
+    ready        = has_probed and has_budget
+
     try:
         completion = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
+                {"role": "user",   "content": build_prompt(obs, step, history)},
             ],
             temperature=TEMPERATURE,
             max_tokens=MAX_TOKENS,
         )
         text = (completion.choices[0].message.content or "").strip()
         if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        parsed = json.loads(text)
-        # Override if LLM still probing after step 3
-        if step >= 3 and parsed.get("action_type") in ["probe_candidate", "probe_team_lead"]:
-            return force_action(obs, step)
-        return parsed
-    except Exception as e:
+            text = text.split("```")[1].lstrip("json")
+        parsed = json.loads(text.strip())
+
+        action_type = parsed.get("action_type", "")
+
+        # LLM still probing when it already has all info
+        if ready and step >= 4 and action_type in ["probe_candidate", "consult_team_lead"]:
+            return force_action(obs, 4)
+
+        return {
+            "action_type":   action_type,
+            "salary_offer":  parsed.get("salary_offer"),
+            "message":       parsed.get("message"),
+            "benefits":      parsed.get("benefits"),
+            "skill_to_verify": parsed.get("skill_to_verify"),
+        }
+    except Exception:
         return force_action(obs, step)
 
 
 # ---------------------------------------------------------------------------
-# Main runner
+# Task runner
 # ---------------------------------------------------------------------------
+def run_task(client: OpenAI, task_id: str) -> float:
+    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
-def run_task(client: OpenAI, task_name: str) -> float:
-    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-
-    obs = env_reset(task_name)
+    obs = env_reset(task_id)
     history: List[str] = []
     rewards: List[float] = []
     steps_taken = 0
@@ -225,27 +206,28 @@ def run_task(client: OpenAI, task_name: str) -> float:
 
     try:
         for step in range(1, MAX_STEPS + 1):
-            if obs.get("episode_done"):
+            if obs.get("candidate_status") in ("hired", "rejected", "accepted_competitor"):
                 break
 
-            parsed = get_agent_action(client, obs, step, history)
-            action_type = parsed.get("action_type", "probe_candidate")
-            action_data = parsed.get("action_data", {})
-            reasoning = parsed.get("reasoning", "")
+            action = get_action(client, obs, step, history)
+            action_type = action.get("action_type", "probe_candidate")
 
-            result = env_step(action_type, action_data)
-            obs = result["observation"]
-            reward = result.get("reward", 0.0)
-            done = result.get("done", False)
-            error = obs.get("last_action_error")
+            try:
+                result  = env_step(action)
+                obs     = result["observation"]
+                reward  = float(result.get("reward", 0.0))
+                done    = bool(result.get("done", False))
+                error   = obs.get("last_action_error")
+            except Exception as e:
+                reward, done, error = 0.0, True, str(e)
 
             rewards.append(reward)
             steps_taken = step
-            history.append(f"Step {step}: [{action_type}] {json.dumps(action_data)[:80]} -> reward={reward:.2f}")
+            history.append(f"[{action_type}] r={reward:.2f}")
 
             log_step(
                 step=step,
-                action=f"{action_type}({json.dumps(action_data)[:60]})",
+                action=f"{action_type}(salary={action.get('salary_offer')})",
                 reward=reward,
                 done=done,
                 error=error,
@@ -254,37 +236,38 @@ def run_task(client: OpenAI, task_name: str) -> float:
             if done:
                 break
 
-        # Score = cumulative reward clamped to [0, 1]
-        score = min(0.999, max(0.001, sum(rewards)))
+        score   = env_score()
+        score   = min(1.0, max(0.0, score))
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     except Exception as exc:
-        print(f"[DEBUG] Run failed: {exc}", flush=True)
+        print(f"[DEBUG] Task failed: {exc}", flush=True)
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
     return score
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 def main():
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    client     = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
     all_scores = []
 
-    for task_name in TASKS_TO_RUN:
+    for task_id in TASKS_TO_RUN:
         try:
-            score = run_task(client, task_name)
+            score = run_task(client, task_id)
             all_scores.append(score)
         except Exception as e:
-            print(f"[DEBUG] Task {task_name} failed: {e}", flush=True)
+            print(f"[DEBUG] {task_id} failed: {e}", flush=True)
             all_scores.append(0.0)
-            log_end(success=False, steps=0, score=0.0, rewards=[])
+            log_end(False, 0, 0.0, [])
 
     avg = sum(all_scores) / len(all_scores) if all_scores else 0.0
-    print(f"\n[SUMMARY] tasks={len(all_scores)} avg_score={avg:.3f} scores={','.join(f'{s:.3f}' for s in all_scores)}", flush=True)
+    print(f"\n[SUMMARY] tasks={len(all_scores)} avg_score={avg:.3f} "
+          f"scores={','.join(f'{s:.3f}' for s in all_scores)}", flush=True)
 
 
 if __name__ == "__main__":
     main()
-
-
-
