@@ -283,3 +283,28 @@ hiring-negotiation-arena/
 - **Madhumita SM** -- SASTRA Deemed University
 - **Anirudh Kumar R** -- SASTRA Deemed University
 - **Suhaila Fathima S** -- SASTRA Deemed University
+
+
+## Training Results
+
+### GRPO Training (90 episodes on T4 GPU)
+- Model: Qwen/Qwen2.5-0.5B-Instruct
+- Tasks: task1_easy, task2_medium, task3_hard
+- Episodes: 90 (30 per task)
+- Group size: 2
+- Average reward: 0.382
+- Best checkpoint: grpo_checkpoints_full/best
+
+Sample output:
+[Episode 1/90] task=task1_easy   scores=[0.360, 0.400] avg=0.380 loss=1.678
+[Episode 30/90] task=task3_hard  scores=[0.400, 0.340] avg=0.370 loss=1.499
+[Episode 60/90] task=task3_hard  scores=[0.340, 0.400] avg=0.370 loss=1.873
+[Episode 90/90] task=task3_hard  scores=[0.320, 0.400] avg=0.360 loss=1.055
+Final avg reward: 0.382
+
+### DPO Training (preference-based fairness fine-tuning)
+- Model: Qwen/Qwen2.5-0.5B-Instruct  
+- Pairs: 31 preference pairs from preference_pairs.jsonl
+- Epochs: 1
+- Chosen trajectories: fair negotiation (probe → consult → market-rate offer)
+- Rejected trajectories: biased negotiation (college-tier probing, salary anchoring)
