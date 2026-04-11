@@ -76,14 +76,34 @@ class CandidateParty:
             }
         elif salary < min_sal:
             gap = min_sal - salary
-            return {
-                "accepted": False,
-                "message": (
-                    f"I appreciate the offer, but ${salary:,.0f} is below what I was hoping for. "
-                    f"I'd need at least ${min_sal:,.0f} to move forward."
-                ),
-                "revealed_info": {"gap": gap, "min_acceptable_salary": min_sal},
-            }
+            # Counter-offer mechanic: if within 10%, candidate proposes a number
+            close_enough = salary >= min_sal * 0.90
+            if close_enough:
+                counter = round(min_sal * 1.02 / 1000) * 1000  # 2% above minimum
+                return {
+                    "accepted": False,
+                    "counter_offer": True,
+                    "counter_salary": counter,
+                    "message": (
+                        f"I appreciate the offer of ${salary:,.0f}. I am genuinely interested "
+                        f"in this role, but I was hoping for something closer to ${counter:,.0f}. "
+                        f"Would you be able to meet me there?"
+                    ),
+                    "revealed_info": {
+                        "counter_offer": True,
+                        "counter_salary": counter,
+                        "min_acceptable_salary": min_sal,
+                    },
+                }
+            else:
+                return {
+                    "accepted": False,
+                    "message": (
+                        f"I appreciate the offer, but ${salary:,.0f} is below what I was hoping for. "
+                        f"I'd need at least ${min_sal:,.0f} to move forward."
+                    ),
+                    "revealed_info": {"gap": gap, "min_acceptable_salary": min_sal},
+                }
         else:
             return {
                 "accepted": False,

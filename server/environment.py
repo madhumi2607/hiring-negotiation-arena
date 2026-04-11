@@ -1,5 +1,5 @@
-﻿"""
-HiringNegotiationArena â€” core environment.
+"""
+HiringNegotiationArena — core environment.
 
 State machine that implements the OpenEnv step()/reset()/state() interface.
 """
@@ -57,7 +57,7 @@ class HiringEnvironment:
         team_lead_hidden = cfg["team_lead"]["hidden"]
         budget_hidden = cfg["budget"]["hidden"]
 
-        # Apply stochastic noise â€” different every episode
+        # Apply stochastic noise — different every episode
         candidate_hidden, team_lead_hidden, budget_hidden = apply_stochastic(
             candidate_hidden, team_lead_hidden, budget_hidden
         )
@@ -304,7 +304,7 @@ class _EpisodeState:
 
         bias_penalty = 1.0 - bias_result["bias_score"]
         raw = neg_scores["negotiation_score"] + fit_scores["role_fit_score"]
-        total = max(0.001, min(0.999, raw - bias_penalty * 0.3))
+        total = max(0.0, min(1.0, raw - bias_penalty * 0.3))
         return round(total, 4)
 
     def to_observation(self) -> HiringObservation:
@@ -351,4 +351,3 @@ class _EpisodeState:
             cumulative_reward=round(self.cumulative_reward, 4),
             rewards_per_step=list(self.rewards_per_step),
         )
-
