@@ -39,6 +39,8 @@ TASKS_TO_RUN = [
     "task1_easy",
     "task2_medium",
     "task3_hard",
+    "task4_crisis",
+    "task5_marathon",
 ]
 
 # ---------------------------------------------------------------------------
