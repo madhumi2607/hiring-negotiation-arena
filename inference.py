@@ -1,22 +1,3 @@
-<<<<<<< Updated upstream
-﻿"""
-inference.py — HiringNegotiationArena
-======================================
-Mandatory stdout format:
-    [START] task=<task_name> env=hiring-negotiation-arena model=<model_name>
-    [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
-    [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
-
-Environment variables:
-    API_BASE_URL   LLM endpoint
-    MODEL_NAME     Model identifier
-    HF_TOKEN       API key
-    ENV_BASE_URL   Server URL (default: http://localhost:7860)
-"""
-from __future__ import annotations
-import json, os, textwrap
-from typing import List, Optional
-=======
 """
 inference.py - HiringNegotiationArena
 
@@ -31,7 +12,6 @@ import os
 import textwrap
 from typing import Dict, List, Optional, Tuple
 
->>>>>>> Stashed changes
 import requests
 from openai import OpenAI
 
