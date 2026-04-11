@@ -23,11 +23,13 @@ try:
     from .role_grader import score_role_fit, score_negotiation
     from .bias_detector import BiasDetector
     from .task_configs import TASKS
+    from .stochastic import apply_stochastic
 except ImportError:
     from server.parties import CandidateParty, TeamLeadParty, BudgetSystem  # type: ignore
     from server.role_grader import score_role_fit, score_negotiation  # type: ignore
     from server.bias_detector import BiasDetector  # type: ignore
     from server.task_configs import TASKS  # type: ignore
+    from server.stochastic import apply_stochastic  # type: ignore
 
 
 VALID_ACTIONS = {
@@ -51,13 +53,22 @@ class HiringEnvironment:
 
         candidate_cfg = cfg["candidates"][0] if is_marathon else cfg["candidate"]
 
+        candidate_hidden = candidate_cfg["hidden"]
+        team_lead_hidden = cfg["team_lead"]["hidden"]
+        budget_hidden = cfg["budget"]["hidden"]
+
+        # Apply stochastic noise — different every episode
+        candidate_hidden, team_lead_hidden, budget_hidden = apply_stochastic(
+            candidate_hidden, team_lead_hidden, budget_hidden
+        )
+
         self._state = _EpisodeState(
             task_name=self.task_name,
             max_steps=cfg["max_steps"],
             role=role,
-            candidate_cfg=candidate_cfg,
-            team_lead_hidden=cfg["team_lead"]["hidden"],
-            budget_hidden=cfg["budget"]["hidden"],
+            candidate_cfg={**{k: v for k, v in candidate_cfg.items() if k != "hidden"}, "hidden": candidate_hidden},
+            team_lead_hidden=team_lead_hidden,
+            budget_hidden=budget_hidden,
             is_marathon=is_marathon,
             all_candidates=cfg.get("candidates", []),
         )
