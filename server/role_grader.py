@@ -70,7 +70,7 @@ def score_role_fit(
             # Above market — still acceptable but less points
             salary_range_score = 0.05
 
-    total = required_skills_score + experience_score + salary_range_score
+    total = min(0.399, required_skills_score + experience_score + salary_range_score)
 
     return {
         "role_fit_score": round(total, 4),
