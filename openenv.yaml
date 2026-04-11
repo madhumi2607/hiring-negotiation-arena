@@ -1,0 +1,20 @@
+spec_version: 1
+name: hiring-negotiation-arena
+type: environment
+runtime: python
+app: server.app:app
+port: 7860
+
+description: >
+  Multi-party hiring negotiation environment where an AI agent acts as a hiring manager.
+  Candidate hides competing offers, team lead has skill requirements and potential bias,
+  budget system has hidden salary caps. Features live bias detection — making this
+  simultaneously an RL benchmark and an AI fairness evaluation tool.
+
+tags:
+  - openenv
+  - negotiation
+  - hiring
+  - fairness
+  - multi-party
+  - hidden-state
