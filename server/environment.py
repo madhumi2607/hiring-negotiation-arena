@@ -304,7 +304,7 @@ class _EpisodeState:
 
         bias_penalty = 1.0 - bias_result["bias_score"]
         raw = neg_scores["negotiation_score"] + fit_scores["role_fit_score"]
-        total = max(0.0, min(1.0, raw - bias_penalty * 0.3))
+        total = max(0.001, min(0.999, raw - bias_penalty * 0.3))
         return round(total, 4)
 
     def to_observation(self) -> HiringObservation:
