@@ -121,7 +121,7 @@ def score_negotiation(
     elif budget_approved is None and budget_checked:
         budget_score = 0.04
 
-    total = offer_accepted_score + team_lead_score + budget_score
+    total = min(0.599, offer_accepted_score + team_lead_score + budget_score)
 
     return {
         "negotiation_score": round(total, 4),
