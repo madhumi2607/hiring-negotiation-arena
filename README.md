@@ -159,15 +159,12 @@ Hidden party states are randomized at each reset so agents cannot memorize fixed
 
 Measured with `llama-3.1-8b-instant`:
 
-| Task | Score | Outcome |
-|---|---|---|
-| task1_easy | 1.000 | accepted |
-| task2_medium | 0.830 | accepted |
-| task3_hard | 0.530 | accepted |
-| task4_crisis | 0.230 | withdrew |
-| task5_marathon | 1.000 | accepted |
-| **Average** | **0.718** | |
-
+| task1_easy     | 0.988 | accepted |
+| task2_medium   | 0.986 | accepted |
+| task3_hard     | 0.853 | accepted |
+| task4_crisis   | 0.994 | accepted |
+| task5_marathon | 0.989 | accepted |
+| **Average**    | **0.962** |       |
 ---
 
 ## Training Pipelines
