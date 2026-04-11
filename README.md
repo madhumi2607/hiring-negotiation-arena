@@ -1,3 +1,11 @@
+---
+title: hiring-negotiation-arena
+emoji: ??
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
 # HiringNegotiationArena
 
 **An OpenEnv multi-party hiring negotiation environment with live bias detection.**
@@ -191,3 +199,4 @@ hiring-negotiation-arena/
     ├── test_role_grader.py
     └── test_bias_detector.py
 ```
+
