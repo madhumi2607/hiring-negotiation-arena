@@ -267,7 +267,8 @@ class _EpisodeState:
         if self.step >= self.max_steps:
             self.done = True
             return True
-        if self.candidate.interest <= 0.0:
+        crisis_withdraw = self.task_name == "task4_crisis" and self.step >= 2 and not self.offers_made
+        if crisis_withdraw or self.candidate.interest <= 0.0:
             self.outcome = "withdrew"
             self.done = True
             return True
@@ -304,7 +305,7 @@ class _EpisodeState:
 
         bias_penalty = 1.0 - bias_result["bias_score"]
         raw = neg_scores["negotiation_score"] + fit_scores["role_fit_score"]
-        total = max(0.0, min(1.0, raw - bias_penalty * 0.3))
+        total = max(0.0, min(1.0, raw * bias_result["bias_score"]))
         return round(total, 4)
 
     def to_observation(self) -> HiringObservation:
@@ -351,3 +352,5 @@ class _EpisodeState:
             cumulative_reward=round(self.cumulative_reward, 4),
             rewards_per_step=list(self.rewards_per_step),
         )
+
+
