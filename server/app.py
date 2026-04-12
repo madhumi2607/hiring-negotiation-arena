@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
 @app.get("/score")
 def get_score():
-    """Return current episode score — required by OpenEnv spec."""
+    """Return current episode score - required by OpenEnv spec."""
     if _env._state is None:
         return {"score": 0.0, "outcome": None, "done": False}
     state = _env._state
