@@ -162,7 +162,7 @@ class _EpisodeState:
             self.last_responses.append(
                 PartyResponse(party="candidate", message=result["message"], revealed_info=result["revealed_info"])
             )
-            reward = 0.05
+            reward = 0.10
 
         elif action.action_type == "probe_team_lead":
             result = self.team_lead.respond_to_probe(
@@ -173,7 +173,7 @@ class _EpisodeState:
             self.last_responses.append(
                 PartyResponse(party="team_lead", message=result["message"], revealed_info=result["revealed_info"])
             )
-            reward = 0.05
+            reward = 0.10
 
         elif action.action_type == "check_budget":
             proposed = action.action_data.get("proposed_salary", 0.0)
@@ -184,7 +184,7 @@ class _EpisodeState:
             self.last_responses.append(
                 PartyResponse(party="budget", message=result["message"], revealed_info=result["revealed_info"])
             )
-            reward = 0.03
+            reward = 0.06
 
         elif action.action_type == "extend_deadline":
             self.last_responses.append(
@@ -219,7 +219,7 @@ class _EpisodeState:
 
         done = self._check_done()
         if done and self.outcome is None:
-            self.outcome = "timeout"
+            self.outcome = "timeout"  # max steps reached — episode boundary
             reward += self._compute_final_reward()
             self.rewards_per_step[-1] = reward
 
@@ -352,5 +352,8 @@ class _EpisodeState:
             cumulative_reward=round(self.cumulative_reward, 4),
             rewards_per_step=list(self.rewards_per_step),
         )
+
+
+
 
 

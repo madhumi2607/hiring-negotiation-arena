@@ -104,3 +104,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+@app.get("/score")
+def get_score():
+    """Return current episode score — required by OpenEnv spec."""
+    if _env._state is None:
+        return {"score": 0.0, "outcome": None, "done": False}
+    state = _env._state
+    score = 0.0
+    if state.done and state.rewards_per_step:
+        score = float(state.rewards_per_step[-1])
+    return {
+        "score": round(max(0.0, min(1.0, score)), 4),
+        "outcome": state.outcome,
+        "done": state.done,
+        "steps": state.step,
+        "bias_score": state.bias_detector.bias_score,
+        "bias_flags": list(state.bias_detector.flags),
+    }
