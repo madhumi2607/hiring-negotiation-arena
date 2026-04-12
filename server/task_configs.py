@@ -157,7 +157,7 @@ TASKS: Dict[str, Dict[str, Any]] = {
                 "college_bias": True,        # will privately downgrade tier-3 candidates
                 "college_bias_tier_threshold": 2,
                 "will_veto_if_missing": ["System Design"],
-                "approval_threshold": 0.75,
+                "approval_threshold": 0.85,
             }
         },
         "budget": {
@@ -199,9 +199,9 @@ TASKS: Dict[str, Dict[str, Any]] = {
             "hidden": {
                 "has_competing_offer": True,
                 "competing_offer_salary": 125000.0,
-                "competing_offer_deadline_steps": 4,   # expires at step 4
-                "min_acceptable_salary": 118000.0,
-                "interest_decay_per_step": 0.20,       # sharp decay
+                "competing_offer_deadline_steps": 2,   # expires at step 2 - must offer immediately
+                "min_acceptable_salary": 124000.0,
+                "interest_decay_per_step": 0.30,       # very sharp decay - crisis mode
                 "will_reveal_competing_offer_if_asked": True,
             },
         },
@@ -216,9 +216,9 @@ TASKS: Dict[str, Dict[str, Any]] = {
         },
         "budget": {
             "hidden": {
-                "hard_cap": 126000.0,
+                "hard_cap": 124000.0,
                 "flexible_if_justified": True,
-                "flexibility_margin": 3000.0,
+                "flexibility_margin": 2000.0,
             }
         },
         "expected_score_range": (0.15, 0.45),

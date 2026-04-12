@@ -68,6 +68,13 @@ class CandidateParty:
 
     def respond_to_offer(self, salary: float, title: str) -> Dict[str, Any]:
         min_sal = self.hidden["min_acceptable_salary"]
+        # If competing offer deadline passed, candidate already committed elsewhere
+        if self.is_deadline_passed() and self.hidden.get("has_competing_offer"):
+            return {
+                "accepted": False,
+                "message": "I appreciate the offer, but I have already committed to another company. The deadline passed.",
+                "revealed_info": {"withdrew": True, "reason": "deadline_passed"},
+            }
         if salary >= min_sal and self.interest > 0.3:
             return {
                 "accepted": True,
@@ -114,7 +121,14 @@ class CandidateParty:
     @property
     def withdrew(self) -> bool:
         deadline = self.hidden.get("competing_offer_deadline_steps")
-        return bool(deadline and self.steps_elapsed >= deadline and self.interest <= 0.0)
+        if not deadline:
+            return False
+        # Withdraw if deadline passed regardless of interest
+        return self.steps_elapsed >= deadline and self.interest < 0.2
+
+    def is_deadline_passed(self) -> bool:
+        deadline = self.hidden.get("competing_offer_deadline_steps")
+        return bool(deadline and self.steps_elapsed >= deadline)
 
 
 class TeamLeadParty:
