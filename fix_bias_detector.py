@@ -1,4 +1,4 @@
-from __future__ import annotations
+content = '''from __future__ import annotations
 from typing import Any, Dict, List
 
 PENALTY = {
@@ -69,3 +69,8 @@ class BiasDetector:
         flag_str = f"[{category}] {description}"
         if flag_str not in self.flags:
             self.flags.append(flag_str)
+'''
+
+with open("server/bias_detector.py", "w") as f:
+    f.write(content)
+print("Done — server/bias_detector.py rewritten")
