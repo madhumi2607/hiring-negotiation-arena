@@ -108,11 +108,11 @@ reward = negotiation_score (0-0.6) + role_fit_score (0-0.4) - bias_penalty
 
 | Task | Difficulty | Steps | What Makes It Hard | Expected Score |
 |---|---|---|---|---|
-| `task1_easy` | Easy | 15 | Nothing hidden. Match skills and make offer. | 0.75 – 0.95 |
-| `task2_medium` | Medium | 12 | Candidate has hidden competing offer. Budget has hidden cap. | 0.45 – 0.70 |
-| `task3_hard` | Hard | 10 | All 3 parties hiding things. Team lead has college bias. | 0.20 – 0.50 |
-| `task4_crisis` | Hard | 8 | Competing offer expires in 4 steps. Sharp interest decay. | 0.15 – 0.45 |
-| `task5_marathon` | Hard | 24 | 3 sequential candidates. Knowledge transfers between rounds. | 0.30 – 0.70 |
+| `task1_easy` | Easy | 15 | Nothing hidden. Match skills and make offer. | 0.85 – 0.95 |
+| `task2_medium` | Medium | 12 | Candidate has hidden competing offer. Budget has hidden cap. | 0.75 – 0.90 |
+| `task3_hard` | Hard | 10 | All 3 parties hiding things. Team lead has college bias. | 0.45 – 0.65 |
+| `task4_crisis` | Hard | 8 | Competing offer expires in 4 steps. Sharp interest decay. | 0.55 – 0.75 |
+| `task5_marathon` | Hard | 24 | 3 sequential candidates. Knowledge transfers between rounds. | 0.70 – 0.85 |
 
 ---
 
@@ -158,32 +158,31 @@ Hidden party states are randomized at each reset so agents cannot memorize fixed
 
 ## Baseline Scores
 
-Measured with `llama-3.1-8b-instant` via HuggingFace router:
+Measured with `meta-llama/Llama-3.1-8B-Instruct` via HuggingFace router:
 
 | Task | Score | Outcome |
 |---|---|---|
-| task1_easy | 0.988 | accepted |
-| task2_medium | 0.882 | accepted |
-| task3_hard | 0.853 | accepted |
-| task4_crisis | 0.889 | accepted |
-| task5_marathon | 0.992 | accepted |
-| **Average** | **0.921** | |
+| task1_easy | 0.928 | accepted |
+| task2_medium | 0.832 | accepted |
+| task3_hard | 0.549 | accepted |
+| task4_crisis | 0.676 | accepted |
+| task5_marathon | 0.818 | accepted |
+| **Average** | **0.761** | |
 
 Sample inference output:
 ```
 [START] task=task1_easy env=hiring-negotiation-arena model=llama-3.1-8b-instant
-[STEP] step=1 action=probe_team_lead(salary=None) reward=0.05 done=false error=null
-[STEP] step=2 action=probe_candidate(salary=None) reward=0.05 done=false error=null
-[STEP] step=3 action=check_budget(salary=100200) reward=0.03 done=false error=null
-[STEP] step=4 action=make_offer(salary=102000) reward=0.99 done=true error=null
-[END] success=true steps=4 score=0.988 rewards=0.05,0.05,0.03,0.99
+[STEP] step=1 action=probe_team_lead(salary=None) reward=0.10 done=false error=null
+[STEP] step=2 action=probe_candidate(salary=None) reward=0.10 done=false error=null
+[STEP] step=3 action=make_offer(salary=100000) reward=0.99 done=true error=null
+[END] success=true steps=3 score=0.928 rewards=0.10,0.10,0.99
 
 [START] task=task4_crisis env=hiring-negotiation-arena model=llama-3.1-8b-instant
-[STEP] step=1 action=make_offer(salary=120000) reward=0.10 done=false error=null
+[STEP] step=1 action=make_offer(salary=119000) reward=0.10 done=false error=null
 [STEP] step=2 action=make_offer(salary=129000) reward=0.89 done=true error=null
-[END] success=true steps=2 score=0.889 rewards=0.10,0.89
+[END] success=true steps=2 score=0.676 rewards=0.10,0.89
 
-[SUMMARY] tasks=5 avg_score=0.921 scores=0.988,0.882,0.853,0.889,0.992
+[SUMMARY] tasks=5 avg_score=0.761 scores=0.928,0.832,0.549,0.676,0.818
 ```
 
 ---
@@ -253,10 +252,10 @@ Loaded 31 preference pairs
   Reward gap: 0.7497
 
 Chosen trajectory pattern (what model learns):
-  probe_team_lead → probe_candidate → check_budget → make_offer at market rate
+  probe_team_lead -> probe_candidate -> check_budget -> make_offer at market rate
 
 Rejected trajectory pattern (what model avoids):
-  college-tier probing → salary anchoring → below-market offers
+  college-tier probing -> salary anchoring -> below-market offers
   bias flags: [college_tier_rejection] [salary_anchor_bias] [below_market_offer]
 
 Training: 1 epoch | lr=5e-5 | LoRA r=8
@@ -304,15 +303,14 @@ python inference.py
 
 ## API Endpoints
 
-| Endpoint | Method | Body | Description |
-|---|---|---|---|
-| `/reset` | POST | `{"task_id": "task1_easy"}` | Start new episode |
-| `/step` | POST | `{"action": {"action_type": "...", ...}}` | Take an action |
-| `/state` | GET | — | Full internal state including hidden party info |
-| `/score` | GET | — | Current episode score |
-| `/tasks` | GET | — | List all tasks with descriptions |
-| `/health` | GET | — | Health check |
-| `/docs` | GET | — | Interactive Swagger UI |
+| Endpoint | Method | Description |
+|---|---|---|
+| `/reset?task_name=task1_easy` | POST | Start new episode |
+| `/step` | POST | Take an action |
+| `/state` | GET | Full internal state including hidden party info |
+| `/tasks` | GET | List all tasks with descriptions |
+| `/health` | GET | Health check |
+| `/docs` | GET | Interactive Swagger UI |
 
 ---
 
@@ -321,7 +319,7 @@ python inference.py
 | Variable | Default | Description |
 |---|---|---|
 | `API_BASE_URL` | `https://router.huggingface.co/v1` | LLM endpoint |
-| `MODEL_NAME` | `Qwen/Qwen2.5-72B-Instruct` | Model identifier |
+| `MODEL_NAME` | `meta-llama/Llama-3.1-8B-Instruct` | Model identifier |
 | `HF_TOKEN` | — | API key |
 | `ENV_BASE_URL` | `http://localhost:7860` | Environment server URL |
 | `PORT` | `7860` | Server port |
@@ -333,7 +331,7 @@ python inference.py
 ```
 hiring-negotiation-arena/
 ├── models.py              Pydantic Action/Observation/Reward/State models
-├── inference.py           Baseline LLM agent — avg_score=0.921 across 5 tasks
+├── inference.py           Baseline LLM agent — avg_score=0.761 across 5 tasks
 ├── train_grpo.py          GRPO fine-tuning pipeline (90 episodes, T4 GPU)
 ├── train_dpo.py           DPO fine-tuning with automatic bias-based preference pairs
 ├── preference_pairs.jsonl 31 preference pairs (chosen=fair, rejected=biased)
