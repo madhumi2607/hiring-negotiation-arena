@@ -360,3 +360,4 @@ hiring-negotiation-arena/
 * **Madhumita SM** — SASTRA Deemed University
 * **Anirudh Kumar R** — SASTRA Deemed University
 * **Suhaila Fathima S** — SASTRA Deemed University
+
