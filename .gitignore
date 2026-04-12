@@ -6,3 +6,6 @@ fix_bias_detector.py
 all_code.txt
 *.egg-info/
 .env
+
+snippet.txt
+patch.py
