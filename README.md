@@ -206,12 +206,12 @@ Measured with `llama-3.1-8b-instant` via Groq API:
 
 | Task | Score | Steps | Outcome |
 |---|---|---|---|
-| task1_easy | 0.999 | 4 | accepted |
-| task2_medium | 0.999 | 4 | accepted |
-| task3_hard | 0.430 | 6 | timeout |
-| task4_crisis | 0.230 | 4 | withdrew |
-| task5_marathon | 0.999 | 4 | accepted |
-| **Average** | **0.731** | | |
+| task1_easy | 0.928 | 3 | accepted |
+| task2_medium | 0.832 | 3 | accepted |
+| task3_hard | 0.549 | 3 | accepted |
+| task4_crisis | 0.094 | 2 | withdrew |
+| task5_marathon | 0.818 | 4 | accepted |
+| **Average** | **0.644** | | |
 
 ---
 
@@ -353,3 +353,4 @@ hiring-negotiation-arena/
 
 - **Madhumita SM** -- SASTRA Deemed University
 - **Anirudh Kumar R** -- SASTRA Deemed University
+- **Suhaila Fathima S** -- SASTRA Deemed University
