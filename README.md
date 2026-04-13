@@ -13,8 +13,6 @@ pinned: false
 
 [![HF Space](https://img.shields.io/badge/HuggingFace-Space-yellow)](https://huggingface.co/spaces/madhuishere-123/hiring-negotiation-arena)
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-Compliant-blue)](https://github.com/meta-pytorch/OpenEnv)
-[![Phase 1](https://img.shields.io/badge/Phase%201-Passed-green)](https://huggingface.co/spaces/madhuishere-123/hiring-negotiation-arena)
-[![Phase 2](https://img.shields.io/badge/Phase%202-Passed-green)](https://huggingface.co/spaces/madhuishere-123/hiring-negotiation-arena)
 
 ---
 
